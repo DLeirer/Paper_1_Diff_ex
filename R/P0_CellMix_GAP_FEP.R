@@ -18,6 +18,7 @@ library(ggplot2)
 
 
 
+
 # Set directories: ---------------------------
 
 setwd("/home/daniel/Documents/A_Year_4_PHD/Paper_1_Diff_ex")
@@ -30,10 +31,13 @@ P0_figs_dir <-"./P0_Characterise/figs/"
 
 
 
+
+
 # Load gene expression data (Should be LumiBatch object): ---------------------------
 
 lumidata<-"GAP_FEP_Full_Gene_Expression_Data_Linear.RData"
 load(file=paste(data_dir,lumidata,sep=""))
+
 
 
 
@@ -51,7 +55,7 @@ good_fdata<-filter(feature_data, good_probe =="TRUE")
 
 exprs_into_lumibatch<-exprs_data[rownames(exprs_data)%in%good_fdata$nuID,]
 
-################ REMOVE DUPLICATES BY SELCTING HIGHEST AVERAGE EXPRESSED PROBE ###############################
+# REMOVE DUPLICATES BY SELCTING HIGHEST AVERAGE EXPRESSED PROBE 
 #rowmeans
 exprsmean<-rowMeans(exprs_into_lumibatch)
 #add id
@@ -78,4 +82,155 @@ eset_bg_log2_rsn_SVA_Good<-eset_bg_log2_rsn_SVA[rownames(exprs_into_lumibatch2),
 fData(eset_bg_log2_rsn_SVA_Good)<-good_fdata_small
 
 save(eset_bg_log2_rsn_SVA_Good,file=paste(P0_output_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
+
+
+
+
+##GED BLOOD ABBAS WHOLE BLOOD:
+# gedBlood is a meta function. It uses a standard set of functions included in CellMix to generate results. It seems to be able to handle nuIDs. gedBlood automatically adjusts gene IDs so I suspect it searches the LumiBatch file for IDs it recognises and matches them with whatever dataset it uses. 
+# In this case the ABBAS blood atlas is used. 
+# CLsubset allows you to choose between WB for whole blood and PBMCs. 
+# verbose simply tells you the steps it takes which would usually have to be performed manually in the package. 
+# These settings just use a linear model based on gene expression values for different cell types from the ABBAS blood atlas (Abbas et al. 2009)* to estimate cell proportions in each sample.
+# This is after preprocessing, so we only use the approx. 5000 probes that passed QC.
+# Cellmix has a lot more functions and ways to estimate cell proportions, but after looking through all of it, you could probably make it into a study by itself. Some of the methods seem to be quite computationally intensive. See table 2 on page 26 [here](http://web.cbio.uct.ac.za/~renaud/CRAN/web/CellMix/vignettes/Introduction.pdf) for list of approaches. 
+# 
+# ^*Abbas AR, Wolslegel K, Seshasayee D, Modrusan Z and Clark HF (2009). "Deconvolution of blood microarray data identifies cellular activation patterns in systemic lupus erythematosus."^
+#   
+
+
+
+
+# GEDBlood Function: ---------------------------
+
+res_all <- gedBlood(eset_bg_log2_rsn_SVA_Good, CLsubset = "WB", verbose = TRUE)
+
+
+#Extract cell proportions from res_all
+wbloodprop<-coef(res_all)
+
+#Remove rows with sum of 0. Rows represent cell types. If a cell type has a sum of 0 across all samples I exclude it. 
+
+reduced_props<-wbloodprop[apply(wbloodprop, 1, function(x) !all(x==0)),]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Check for differences between cases and controls: -----------------------
+# Here I split the blood proportion data in case and control so I can plot it using ggplot2. 
+
+
+#Get Case Control Status
+pheno_data <- pData(eset_bg_log2_rsn_SVA_Good)
+
+#transform data
+reduced_props<-data.frame(t(reduced_props))
+#check samples in correct order
+all.equal(rownames(reduced_props),rownames(pheno_data))
+#add pheno data
+reduced_probs_pheno<-cbind(reduced_props,pheno_data)
+names(reduced_probs_pheno)
+
+#Melt Data for ggplot
+mwbdata <- melt(reduced_probs_pheno, id=c(11:71))
+head(mwbdata)
+
+
+
+#Graph data
+bloodgraph<-ggplot(mwbdata,aes(x=variable,y=value,fill=Gender)) +  
+  geom_boxplot()+
+  ggtitle("Blood Cell Proportions")+
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  xlab("Cell Type")+ylab("Percentage for each individual")
+bloodgraph
+
+
+#select plots to make
+plotnames<-names(reduced_probs_pheno[c("Phenotype","Gender","Tobacco","Ethnicity","Medication","tech.Sentrix.Barcode","tech.Date_Washing_and_scanning","tech.Date_Quantitation_by_RiboGreen","tech.SampleSection")])
+
+names(reduced_probs_pheno)
+
+#make function
+f <- function(mwbdata, fill_name) {
+  bloodgraph<-ggplot(mwbdata,aes_string(x="variable",y="value",fill=fill_name) ) +  
+    geom_boxplot()+
+    ggtitle("Blood Cell Proportions")+
+    theme(plot.title = element_text(lineheight=.8, face="bold"))+
+    xlab("Cell Type")+ylab("Percentage for each individual")
+  print(bloodgraph)
+}
+
+#Create loop for all variables and save
+CellMixgraph<-"Cell_Mix_Boxplots.pdf"
+pdf(paste(P0_figs_dir,CellMixgraph,sep=""))
+for (fill_number in 1:length(plotnames)){
+  fill_name<-plotnames[fill_number]
+  f(mwbdata,fill_name)  
+  
+}
+dev.off()
+
+
+
+
+
+
+# Statistics: -------------------------------------------------------------
+names(mwbdata)
+stats_pheno<-ddply(mwbdata,"variable",
+                   function(x) {
+                     w <- wilcox.test(value~Phenotype,data=x)
+                     with(w,data.frame(statistic,p.value))
+                   })
+
+stats_pheno
+
+# Add TC and neutro to phenodata: -----------------------------------------
+
+cor(reduced_probs_pheno[1:10])
+
+
+pData(eset_bg_log2_rsn_SVA_Good)<-reduced_probs_pheno[,c(11:71,1,10)]
+names(pData(eset_bg_log2_rsn_SVA_Good))
+save(eset_bg_log2_rsn_SVA_Good,file=paste(P0_output_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
+
+
+# Linear model to remove Age Ethnicity Sex and Blood differences: ---------
+pData_rAESB<-pData(eset_bg_log2_rsn_SVA_Good)
+exprs_rAESB<-exprs(eset_bg_log2_rsn_SVA_Good)
+
+str(pData_rAESB)
+
+mod = model.matrix(~Tc+neutro+as.factor(Gender)+Age+as.factor(Ethnicity),data=pData_rAESB)
+fit = lm.fit(mod,t(exprs_rAESB))
+#add residuals to average expression data
+exprs_res_cor_adj<-t(fit$residuals)+apply(exprs_rAESB,1,mean)
+exprs_res_cor_adj[1:10,1:10]
+
+
+#make Lumibatch
+exprs_into_lumibatch<-exprs_res_cor_adj
+#check they are same order
+all.equal(rownames(fData(eset_bg_log2_rsn_SVA_Good)),rownames(exprs_into_lumibatch))
+#LUMIBATCH made
+eset_linear_adj<-eset_bg_log2_rsn_SVA_Good
+#Expression data put in
+exprs(eset_linear_adj)<-exprs_into_lumibatch
+
+#save
+save(eset_linear_adj,file=paste(P0_output_dir,"GAP_FEP_eset_linear_adj_Data.RData",sep=""))
 
