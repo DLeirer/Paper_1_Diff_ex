@@ -20,3 +20,25 @@ library(ggplot2)
 
 
 ```
+
+
+
+##Set directories:
+```{r directory}
+getwd()
+data_dir <-"./data/"
+P0_output_dir <-"./P0_Characterise/output/"
+P0_figs_dir <-"./P0_Characterise/figs/"
+
+```
+
+
+##Load gene expression data (Should be LumiBatch object):
+```{r }
+
+lumidata<-"GAP_FEP_Full_Gene_Expression_Data_Linear.RData"
+load(paste(data_dir,lumidata,sep=""))
+
+
+```
+
