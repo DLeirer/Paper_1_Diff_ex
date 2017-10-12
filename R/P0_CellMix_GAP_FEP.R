@@ -15,8 +15,6 @@ library(ggplot2)
 
 
 
-s
-
 
 
 # Set directories: ---------------------------
