@@ -18,7 +18,7 @@ library(ggplot2)
 
 # Set directories: ---------------------------
 
-setwd("/home/daniel/Documents/A_Year_4_PHD/Paper_1_Diff_ex")
+setwd("/home/daniel/Documents/Post_PhD_Papers/Paper_1_Diff_ex")
 getwd()
 
 data_dir <-"./data/"
@@ -34,7 +34,8 @@ P0_figs_dir <-"./P0_Characterise/figs/"
 
 lumidata<-"GAP_FEP_Full_Gene_Expression_Data_Linear.RData"
 load(file=paste(data_dir,lumidata,sep=""))
-
+PRS_data<-read.csv(paste(data_dir,"GAP_FEP_Polygenic_Risk_scores.csv",sep=""))
+PRS_eigenvalues_data<-read.csv(paste(data_dir,"GAP_eigenvectors_from_Vangelis_04_03_2015.csv",sep=""),na.strings=c("#N/A","notfound"))
 
 
 
