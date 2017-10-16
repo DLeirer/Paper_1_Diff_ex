@@ -5,6 +5,8 @@
 
 # Install and load Libraries: ---------------------------
 
+rm(list = ls())
+dev.off()
 library(CellMix)
 library(lumi)
 library(reshape)
@@ -115,18 +117,6 @@ reduced_props<-wbloodprop[apply(wbloodprop, 1, function(x) !all(x==0)),]
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 # Check for differences between cases and controls: -----------------------
 # Here I split the blood proportion data in case and control so I can plot it using ggplot2. 
 
@@ -197,38 +187,157 @@ stats_pheno<-ddply(mwbdata,"variable",
 
 stats_pheno
 
-# Add TC and neutro to phenodata: -----------------------------------------
+# Add PRS, ICD_DSM, TC and neutro columns to phenodata: -----------------------------------------
 
 cor(reduced_probs_pheno[1:10])
+#reduced_probs_pheno<-reduced_probs_pheno[,c(11:71,1,10)]
+#pData(eset_bg_log2_rsn_SVA_Good)<-reduced_probs_pheno[,c(11:71,1,10)]
+#names(pData(eset_bg_log2_rsn_SVA_Good))
 
 
-pData(eset_bg_log2_rsn_SVA_Good)<-reduced_probs_pheno[,c(11:71,1,10)]
+
+
+## add PRS
+reduced_probs_pheno_prs=merge(reduced_probs_pheno,PRS_data[,-c(2:3)],by="sampleID")
+names(reduced_probs_pheno_prs)
+
+
+##Define Columns to keep.
+#dput(names(reduced_probs_pheno_prs))
+DataColGAP_keep<-c("sampleID","Study_ID","gap_id","Phenotype","SEX", "Age", "Ethnicity", "BMI", "Tobacco", 
+                   "Medication", "dsmiv.opcrit", "icd10.opcrit", "panss.date", "PanssScore", 
+                   "PanssPositive", "PanssNegative", "PanssPsycho","Tc", "neutro", 
+                   "Pol_5e08_GAP_all_strict_excl_WTCCC2", "Pol_1e05_GAP_all_strict_excl_WTCCC2", 
+                   "Pol_1e04_GAP_all_strict_excl_WTCCC2", "Pol_0.001_GAP_all_strict_excl_WTCCC2", 
+                   "Pol_0.01_GAP_all_strict_excl_WTCCC2", "Pol_0.05_GAP_all_strict_excl_WTCCC2", 
+                   "Pol_0.1_GAP_all_strict_excl_WTCCC2", "Pol_0.2_GAP_all_strict_excl_WTCCC2", 
+                   "Pol_0.5_GAP_all_strict_excl_WTCCC2", "Pol_1_GAP_all_strict_excl_WTCCC2"
+)
+names(reduced_probs_pheno_prs[,DataColGAP_keep])
+
+reduced_probs_pheno_order<-reduced_probs_pheno_prs[,DataColGAP_keep]
+names(reduced_probs_pheno_order)
+
+
+##Change colnames
+New_col_names<-c("sampleID","Study_ID","gap_id","Phenotype","Sex", "Age", "Ethnicity", "BMI", "Tobacco", 
+                   "Medication", "dsmiv", "icd10", "panss_date", "PanssScore", 
+                   "PanssPositive", "PanssNegative", "PanssPsycho","Tc", "neutro", 
+                   "PRS_5e08", "PRS_1e05", "PRS_1e04", "PRS_0.001", "PRS_0.01", "PRS_0.05", "PRS_0.1", "PRS_0.2", "PRS_0.5", "PRS_1")
+
+
+colnames(reduced_probs_pheno_order)<-New_col_names
+names(reduced_probs_pheno_order)
+
+## add control to dsmiv and icd.
+
+reduced_probs_pheno_order$Phenotype[reduced_probs_pheno_order$Phenotype == "control"] <- "Control"
+reduced_probs_pheno_order$dsmiv[reduced_probs_pheno_order$Phenotype == "Control"] <- "Control"
+reduced_probs_pheno_order$icd10[reduced_probs_pheno_order$Phenotype == "Control"] <- "Control"
+
+#remove NAs make no criteria met.
+reduced_probs_pheno_order$icd10[is.na(reduced_probs_pheno_order$icd10)] <-"No criteria Met" 
+reduced_probs_pheno_order$dsmiv[is.na(reduced_probs_pheno_order$dsmiv)] <-"No criteria Met" 
+reduced_probs_pheno_order$dsmiv[reduced_probs_pheno_order$dsmiv == "No Criteria Met"] <-"No criteria Met" 
+
+reduced_pheno_final<-reduced_probs_pheno_order %>% mutate(ICD_DSM=ifelse(dsmiv=="Schizophrenia" | icd10 == "Schizophrenia","Schizophrenia",
+                                                                             ifelse(dsmiv =="Control", "Control", "Other_Psychosis")))
+
+##Final order
+reduced_pheno_final<-reduced_pheno_final[,c(1:12,30,13:29)]
+table(reduced_pheno_final$icd10)
+table(reduced_pheno_final$dsmiv)
+table(reduced_pheno_final$ICD_DSM)
+
+
+# Adjust PRS for Principle components -------------------------------------
+
+#New matrix Remove mising values
+names(reduced_pheno_final)
+head(reduced_pheno_final)
+PRS_to_adjust<-reduced_pheno_final[c(1:3,21:30)]
+rownames(PRS_to_adjust)<-reduced_pheno_final$sampleID
+
+#remove columns not needed
+PRS_to_adjust<-PRS_to_adjust[complete.cases(PRS_to_adjust),]
+
+
+##get principle components to use for adjustment
+#Reduce
+PRS_eigenvalue_adjust<-PRS_eigenvalues_data[c(2,3,9:18)]
+PRS_eigenvalue_adjust<-PRS_eigenvalue_adjust[complete.cases(PRS_eigenvalue_adjust),]
+#Reduce to relevant Samples
+PRS_eigenvalue_adjust<-PRS_eigenvalue_adjust[PRS_eigenvalue_adjust$GAP_ID%in%PRS_to_adjust$gap_id,]
+colnames(PRS_eigenvalue_adjust)[2]<-"gap_id"
+#change to integer
+PRS_eigenvalue_adjust$gap_id<-as.integer(as.character(PRS_eigenvalue_adjust$gap_id))
+#combine PRS values and eigenvalues.
+Combined_PRS<-inner_join(PRS_eigenvalue_adjust,PRS_to_adjust,by="gap_id")
+
+#add rownames
+rownames(Combined_PRS)<-Combined_PRS$sampleID
+
+#Make adjustment data and pdata
+names(Combined_PRS)
+PRS_matrix<-t(Combined_PRS[,15:24])
+
+
+#Model For matrix, have samples as columns. variables as rows.
+#mod = model.matrix(~eigen_1+eigen_2,data=Combined_PRS)
+formula_formod<-as.formula(paste("~", paste(paste("eigen_",1:10,sep=""), collapse="+")))
+mod = model.matrix(formula_formod,data=Combined_PRS)
+fit = lm.fit(mod,t(PRS_matrix))
+#add residuals to average expression data
+PRS_adjusted<-t(fit$residuals)+apply(PRS_matrix,1,mean)
+
+#clean PRS_adjusted
+PRS_adjusted<-t(PRS_adjusted)
+colnames(PRS_adjusted)<-paste(colnames(PRS_adjusted),"_adj",sep="")
+PRS_adjusted<-as.data.frame(PRS_adjusted)
+PRS_adjusted$sampleID<-rownames(PRS_adjusted)
+
+PRS_adjusted_full<-cbind(Combined_PRS,PRS_adjusted)
+
+#combine with orginal data
+reduced_pheno_final_adj_PRS<-full_join(reduced_pheno_final,PRS_adjusted,by="sampleID")
+
+
+title = "PRS 0.1 adjusted for 10 principle components"
+file_name = "PRS_01_adjusted_for_10_principle_components"
+ggplot(data = reduced_pheno_final_adj_PRS, 
+       aes(x = ICD_DSM, y=PRS_0.1_adj,colour = ICD_DSM)) +
+  geom_jitter() +
+  geom_boxplot(outlier.shape = NA)+
+  facet_wrap(~ Ethnicity)+
+  ggtitle(title)+ 
+  theme_bw(base_size = 10) + 
+  theme(plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(paste(P0_figs_dir,title,".png",sep=""))
+
+
+title = "PRS 0.1 before adjustment"
+file_name = "PRS_01_before_adjustment"
+ggplot(data = reduced_pheno_final_adj_PRS, 
+       aes(x = ICD_DSM, y=PRS_0.1,colour = ICD_DSM)) +
+  geom_jitter() +
+  geom_boxplot(outlier.shape = NA)+
+  facet_wrap(~ Ethnicity) +
+  ggtitle(title)+ 
+  theme_bw(base_size = 10) + 
+  theme(plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(paste(P0_figs_dir,file_name,".png",sep=""))
+
+
+
+# Save with good probes and prs ------------------------------
+
+#check pheno df
+head(reduced_pheno_final_adj_PRS)
+names(reduced_pheno_final_adj_PRS)
+
+#add to lumibatch
+pData(eset_bg_log2_rsn_SVA_Good)<-reduced_pheno_final_adj_PRS
 names(pData(eset_bg_log2_rsn_SVA_Good))
 save(eset_bg_log2_rsn_SVA_Good,file=paste(P0_output_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
 
-
-# Linear model to remove Age Ethnicity Sex and Blood differences: ---------
-pData_rAESB<-pData(eset_bg_log2_rsn_SVA_Good)
-exprs_rAESB<-exprs(eset_bg_log2_rsn_SVA_Good)
-
-str(pData_rAESB)
-
-mod = model.matrix(~Tc+neutro+as.factor(Gender)+Age+as.factor(Ethnicity),data=pData_rAESB)
-fit = lm.fit(mod,t(exprs_rAESB))
-#add residuals to average expression data
-exprs_res_cor_adj<-t(fit$residuals)+apply(exprs_rAESB,1,mean)
-exprs_res_cor_adj[1:10,1:10]
-
-
-#make Lumibatch
-exprs_into_lumibatch<-exprs_res_cor_adj
-#check they are same order
-all.equal(rownames(fData(eset_bg_log2_rsn_SVA_Good)),rownames(exprs_into_lumibatch))
-#LUMIBATCH made
-eset_linear_adj<-eset_bg_log2_rsn_SVA_Good
-#Expression data put in
-exprs(eset_linear_adj)<-exprs_into_lumibatch
-
-#save
-save(eset_linear_adj,file=paste(P0_output_dir,"GAP_FEP_eset_linear_adj_Data.RData",sep=""))
-
+load(file=paste(P0_output_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
