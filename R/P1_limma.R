@@ -202,3 +202,39 @@ table2down$adj.P.Val<-signif(table2down$adj.P.Val,2)
 write.table(table2down, file=paste(P1_output_dir,"Table_2_downregulated_significant_limma_results_AgeSexEthnicity_Adj.tsv",sep=""),row.names=FALSE,quote=FALSE,sep = "\t")
 
 
+
+
+# Plots: Volcano and Chromosome -------------------------------------------
+
+# Make a basic volcano plot
+
+filename <- "Volcanoplot.jpeg"
+jpeg(file = paste(P1_figs_dir,filename,sep=""), pointsize = 20, width = 1500, height = 1300)
+with(datatoplot, plot(logFC, -log10(P.Value), pch=20, main="Volcano Plot of Differentially Expressed Probes", xlim=c(-1,1)))
+
+# Add colored points: red if padj<0.05, orange of log2FC>1, green if both)
+with(subset(datatoplot, logFC >= 0 ), points(logFC, -log10(P.Value), pch=20, col="navy"))
+with(subset(datatoplot, logFC <= 0 ), points(logFC, -log10(P.Value), pch=20, col="darkgreen"))
+with(subset(datatoplot, Sig_LogFC_probes =="BACKGROUND" ), points(logFC, -log10(P.Value), pch=20, col="firebrick"))
+
+
+# Label points with the textxy function from the calibrate plot
+with(datatoplot [c(1,4,8,9,10,12),], textxy(logFC, -log10(P.Value), labs=TargetID, cex=.5))
+with(subset(datatoplot, logFC < -0.25 & adj.P.Val <0.002 ), textxy(logFC, -log10(P.Value), labs=TargetID, cex=.5,offset = .6))
+with(subset(datatoplot, logFC < -0.33 & adj.P.Val <0.05 ), textxy(logFC, -log10(P.Value), labs=TargetID, cex=.5,offset = .6))
+with(subset(datatoplot, logFC >= 0.38 & adj.P.Val <0.05 ), textxy(logFC, -log10(P.Value), labs=TargetID, cex=.5,offset = .6))
+dev.off()
+
+
+#LogFC by chromosome
+title = "LogFC by Chromosome"
+ggplot(data = datatoplot, 
+       aes(x = CHROMOSOME, y=logFC, color=CHROMOSOME)) +
+  geom_boxplot(alpha = 0)+
+  geom_text(data=filter(datatoplot, logFC >= 0.3 |logFC <= -0.27),check_overlap = TRUE,angle=45,
+            aes(CHROMOSOME,logFC,label=TargetID),size=3)+
+  ggtitle(title)+ 
+  theme_bw(base_size = 10) + 
+  theme(plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 0, hjust = 1))
+ggsave(paste(P1_figs_dir,title,".png",sep=""))
+
