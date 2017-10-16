@@ -13,7 +13,20 @@ library(reshape)
 library(plyr)
 library(dplyr)
 library(ggplot2)
+library(tableone)
+library(stargazer)
 
+
+# Functions: --------------------------------------------------------------
+
+## Table function 1 demographics
+table_dem_fun<-function(pdata,table_name,stratify,listVars,catVars){
+  table1 <- CreateTableOne(vars = listVars, data = pdata, factorVars = catVars,strata=c(stratify),includeNA = T)
+  table1print<-print(table1)
+  table1print<-table1print[,-length(names(data.frame(table1print)))]
+  write.csv(table1print, file=paste(P0_output_dir,"no_latex_",table_name,sep=""),row.names = TRUE, col.names = TRUE,quote=FALSE,sep = ",")
+  write.csv(stargazer(table1print,summary=FALSE), file=paste(P0_output_dir,"latex_",table_name,sep=""),row.names=F,col.names = F,sep="")
+}
 
 
 
@@ -340,4 +353,49 @@ pData(eset_bg_log2_rsn_SVA_Good)<-reduced_pheno_final_adj_PRS
 names(pData(eset_bg_log2_rsn_SVA_Good))
 save(eset_bg_log2_rsn_SVA_Good,file=paste(P0_output_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
 
+
+
+# Demographics Table ------------------------------------------------------
+
+
 load(file=paste(P0_output_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
+
+PRS_index<-c(31:40)
+
+phenodat<-pData(eset_bg_log2_rsn_SVA_Good)
+phenodat[PRS_index]<-scale(phenodat[PRS_index])
+
+names(phenodat)
+
+#######Table1: Demographics
+##variables
+lVars <- c("Sex","Age", "Ethnicity","BMI","Tobacco",names(phenodat)[PRS_index])
+cVars <- c("Ethnicity","Tobacco")
+lVars2 <- c("Medication","dsmiv","icd10","ICD_DSM","PanssScore","PanssPositive","PanssNegative","PanssPsycho")
+cVars2 <- c("Medication","dsmiv","icd10","ICD_DSM")
+
+
+##table statified by case control
+stratVar <- "Phenotype" 
+table_name <-"Table_1_Demographics.csv"
+table_dem_fun(phenodat,table_name,stratVar,lVars,cVars)
+table_name <-"Table_2_Clinicalinformation.csv"
+table_dem_fun(phenodat,table_name,stratVar,lVars2,cVars2)
+
+##table statified by Diagnosis consensus.
+stratVar <- "ICD_DSM" 
+table_name <-"Table_1_SczCat_Demographics.csv"
+table_dem_fun(phenodat,table_name,stratVar,lVars,cVars)
+table_name <-"Table_2_SczCat_Clinicalinformation.csv"
+table_dem_fun(filter(phenodat,Phenotype=="FEP"),table_name,stratVar,lVars2,cVars2)
+
+##table statified by Diagnosis consensus.
+stratVar <- "ICD_DSM" 
+table_name <-"Table_1_SczCat_white_Demographics.csv"
+table_dem_fun(filter(phenodat,Ethnicity =="White"),table_name,stratVar,lVars,cVars)
+table_name <-"Table_2_SczCat_white_Clinicalinformation.csv"
+table_dem_fun(filter(phenodat,Phenotype=="FEP" & Ethnicity =="White"),table_name,stratVar,lVars2,cVars2)
+
+
+
+
