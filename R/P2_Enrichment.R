@@ -100,7 +100,28 @@ for(listname in lists){
 # User List Enrichement for Diffferentially expressed genes ---------------
 
 #load background data
+analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
 analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con","Scz vs OP")
+
+
+a=1
+n_sig_probes=200
+analysis_name<-analysis_names[a]
+
+#load data
+all_probes_file<-paste(analysis_names[a],"_all_probes_limma_results.tsv",sep="")
+all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
+
+#clean data
+all_probes$Groups<-replace(all_probes$Groups, all_probes$Sig_LogFC_probes=="BACKGROUND", "background")
+all_probes$Groups<-replace(all_probes$Groups, all_probes$Sig_LogFC_probes=="Diffexprs", "FDR_Pass")
+
+all_probes<- all_probes %>%  mutate(Groups = ifelse(SIG_DE==TRUE & LogFC_BIOLOCICAL != "no-sig-change" & rank(adj.P.Val)<=n_sig_probes,"FDR_Pass","background"))
+all_probes$Groups
+
+
+enrichments = userListEnrichment(all_probes$TargetID,all_probes$Groups,fnIn=c("GAP_reduced_GeneSetsMental_Pirooznia_2016final2.csv"),catNmIn=c("Pirooznia"),minGenesInCategory = 5)
+enrichments = userListEnrichment(all_probes$TargetID,all_probes$Groups,fnIn=c("GAP_reduced_GO_Biological_Process_2015.csv","GAP_reduced_GO_Cellular_Component_2015.csv","GAP_reduced_GO_Molecular_Function_2015.csv","GAP_reduced_Kegg2016.csv","GAP_reduced_GeneSetsMental_Pirooznia_2016final2.csv","GAP_reduced_Blood_WGCNA.csv","GAP_reduced_Brain_WGCNA.csv","GAP_reduced_BrainReg_WGCNA.csv"),catNmIn=c("GO_BP","GO_CC","GO_MF","KEGG_2016","Pirooznia","Blood","Brain","BrainReg"),minGenesInCategory = 5)
 
 
 for (a in 1:length(analysis_names)){
