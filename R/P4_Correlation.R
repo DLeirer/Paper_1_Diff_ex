@@ -8,7 +8,7 @@ library(lumi)
 library(Biobase)
 library(tidyr)
 library(dplyr)
-
+library(Hmisc)
 
 
 library(reshape)
@@ -20,7 +20,20 @@ library(circlize)
 
 # Functions ---------------------------------------------------------------
 
-
+#Function for correlation of gene expressiond data.
+corr_GX_fun<-function(input_Data,Variable,Probe_index=c(41:4770)){
+  
+  # check if Character or Integer 
+  if (class(Probe_index)=="character"){
+    Reduced_Data<-input_Data[,c(Variable,Probe_index)]  
+  }else if (class(Probe_index)=="integer"){
+    Reduced_Data<-input_Data[,c(Variable,colnames(input_Data)[Probe_index])]  
+  }
+  
+  #return(Reduced_Data)
+  return(results<-rcorr(as.matrix(Reduced_Data)))
+  
+}
 
 
 # Set directories ---------------------------------------------------------
@@ -29,31 +42,83 @@ setwd("/home/daniel/Documents/Post_PhD_Papers/Paper_1_Diff_ex")
 getwd()
 top_dir <-getwd()
 data_dir <-"./P0_Characterise/output/"
-P1_limma_dir <-"./P1_Diff_Ex/output/"
+P1_output_dir <-"./P1_Diff_Ex/output/"
 P4_output_dir <-"./P4_Correlation/output/"
 
 
 
 
 # Load Data ---------------------------------------------------------------
-getwd()
 
-load(paste(data_dir,"GAP_FEP_small_Gene_Expression_Data.RData",sep=""))
+
+#Columns 1-40 are Demographics the rest is Gene Expression. Adjusted for Sex age ethnicity, Cellmix
+load(paste(data_dir,"GX_DF_adj_data.Rdata",sep=""))
+
+mode(colnames(GX_DF_adj[1:10,41:50])) %in% c("numeric","character")
+
+
+
+
+
+
+## Load P-Data PANSS, PRS
+Pheno_data<-pData(eset_bg_log2_rsn_SVA_Good)
+
+#Cor PRS, White
+
+#Cor PANSS subscales
+
+
+
+
+# Correlation -------------------------------------------------------------
+
 
 
 
 ## Load diff ex list: FEP-Con, SCZ-Con, OP-Con
 # Make list
-GX_DF[1:10,1:10]
-## Load Gene ex matrix
-GX_DF<-exprs(eset_bg_log2_rsn_SVA_Good)
-# Adjust for Cellmix etc.  
-# Sex+Age+Ethnicity+Tc+neutro
-GX_DF_adj[1:10,1:40]
-## Load P-Data PANSS, PRS
-Pheno_data<-pData(eset_bg_log2_rsn_SVA_Good)
-#Cor PRS, White
-#Cor PANSS subscales
+analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
+analysis_names_save<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
+
+# dput(names(GX_DF_adj[,1:50])) # Variables to use in correlation.
+Variables_for_corr<-c("BMI","PanssScore", "PanssPositive", "PanssNegative", 
+                      "PanssPsycho","PRS_5e08_adj", "PRS_1e05_adj", "PRS_1e04_adj", "PRS_0.001_adj", 
+                      "PRS_0.01_adj", "PRS_0.05_adj", "PRS_0.1_adj", "PRS_0.2_adj", 
+                      "PRS_0.5_adj", "PRS_1_adj")
+
+output<-list()
+for (a in 1:length(analysis_names)){
+  setwd(top_dir)  
+  #analysis name
+  print(analysis_names[a])
+  analysis_name<-analysis_names[a]
+  
+  #load data
+  all_probes_file<-paste(analysis_name,"_all_probes_limma_results.tsv",sep="")
+  all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
+  all_probes<-as.character(filter(all_probes,Sig_LogFC_probes == "Diffexprs")$TargetID)
+  print(all_probes)
+  print(length(all_probes))
+  output[[analysis_names_save[a]]]<-corr_GX_fun(input_Data=GX_DF_adj,Variable=Variables_for_corr,Probe_index=all_probes)
+  
+  #Save
+  
+  #write.csv(enpv_DF_type_r,file=paste(P2_output_dir,"1_out_",analysis_name,"_diff_expression_results.csv",sep=""),row.names=F)
+}  
+
+output$FEP_vs_Control
+output$OP_vs_Con$r
+output$OP_vs_Con$n[1:50,1:50]
+
+
+
+
+# Correlation
+
+
+
+
 
 
 
@@ -79,6 +144,13 @@ GX_DF_adj$PanssNegative
 names()
 str(GX_DF_adj[14:47])
 Filer_GX_DF<-filter(GX_DF_adj,Medication =="Olanzapine")
+
+
+str(GX_DF_adj[14:47])
+
+
+
+results<-rcorr(as.matrix(Filer_GX_DF[14:4767]))
 
 
 dim(Filer_GX_DF)
