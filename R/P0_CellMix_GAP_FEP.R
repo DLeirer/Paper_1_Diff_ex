@@ -397,5 +397,49 @@ table_name <-"Table_2_SczCat_white_Clinicalinformation.csv"
 table_dem_fun(filter(phenodat,Phenotype=="FEP" & Ethnicity =="White"),table_name,stratVar,lVars2,cVars2)
 
 
+# Regress out CellMix and Demographics ------------------------------------
 
+# Make pheno_Data + expresison data
+pData_rAESB<-pData(eset_bg_log2_rsn_SVA_Good)
+exprs_rAESB<-exprs(eset_bg_log2_rsn_SVA_Good)
+names(pData_rAESB)
+
+# Regress out variables
+mod = model.matrix(~Tc+neutro+Sex+Age+Ethnicity,data=pData_rAESB)
+fit = lm.fit(mod,t(exprs_rAESB))
+#add residuals to average expression data
+exprs_res_cor_adj<-t(fit$residuals)+apply(exprs_rAESB,1,mean)
+exprs_res_cor_adj[1:10,1:10] #new
+exprs_rAESB[1:10,1:10] # old
+
+
+
+# Combine GX data and Pheno data ------------------------------------------
+
+# remove duplicate probes and use gene symbols
+gene<-t(exprs_res_cor_adj)
+probenames<-eset_bg_log2_rsn_SVA_Good@featureData@data
+
+#change to gene symbol
+all.equal(colnames(gene),probenames$nuID) #Must be true
+colnames(gene) <- probenames$TargetID
+
+gene_expression_matrix<-t(gene)#delete?
+exprs_data<-gene
+dim(exprs_data)
+
+# pheno data
+names(pData(eset_bg_log2_rsn_SVA_Good))
+pheno_data<-pData(eset_bg_log2_rsn_SVA_Good)
+names(pheno_data)
+
+
+#Add phenotype to Gene expression. 
+GX_DF_adj<-droplevels(merge(pheno_data,exprs_data, by.x="sampleID",by.y="row.names"))
+row.names(GX_DF_adj)<-GX_DF_adj[,1]
+GX_DF_adj[1:10,1:50]
+
+
+#Save results
+save(GX_DF_adj,file=paste(P0_output_dir,"GX_DF_adj_data.Rdata",sep=""), compress = T)
 

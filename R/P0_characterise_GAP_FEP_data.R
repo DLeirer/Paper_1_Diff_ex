@@ -1,4 +1,6 @@
 
+##### NOT NEEDED!!!! ####
+
 # Install and load Libraries: ---------------------------------------------
 rm(list = ls())
 dev.off()
@@ -12,13 +14,13 @@ library(stargazer)
 
 # Set directories: --------------------------------------------------------
 
+### DONT RUN!!! Incorporated into Cellmix script.
+#setwd("/home/daniel/Documents/A_Year_4_PHD/Paper_1_Diff_ex")
+#getwd()
 
-setwd("/home/daniel/Documents/A_Year_4_PHD/Paper_1_Diff_ex")
-getwd()
-
-data_dir <-"./data/"
-P0_output_dir <-"./P0_Characterise/output/"
-P0_figs_dir <-"./P0_Characterise/figs/"
+#data_dir <-"./data/"
+#P0_output_dir <-"./P0_Characterise/output/"
+#P0_figs_dir <-"./P0_Characterise/figs/"
 
 
 
