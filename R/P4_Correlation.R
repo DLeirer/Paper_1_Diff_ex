@@ -139,9 +139,57 @@ for (a2 in 1:length(analysis_names)){
 }  
 
 #check output
-output$FEP_vs_Control$n[c(10:20),c(200:210)]
+output$FEP_vs_Control$n[c(1:20),c(200:210)]
 output$Scz_vs_Con$n[c(10:20),c(200:210)]
 output$OP_vs_Con$n[c(10:20),c(200:210)]
+
+
+
+
+# Get interesting data ----------------------------------------------------
+
+
+#DF cols GeneSymbol, Cor, N, Pval
+
+
+temp_output<-output[temp_name]$FEP_vs_Control
+
+Final_results_list_full<-list()
+Final_results_list_gene<-list()
+for (a4 in 1:length(analysis_names_save)){
+  
+  #define analysis
+  temp_name<-analysis_names_save[a4]
+  print(temp_name)
+  #get df
+  temp_output<-output[[temp_name]]
+  
+  #prep list
+  results_by_var <- list()
+  gene_list <- list()
+
+  #start loop for vars
+  for (i in 1:length(Variables_for_corr)){
+    #ignore rows
+    row_x=c(-1:-15)
+    #select column
+    col_x=i
+    df1<-as.data.frame(cbind(temp_output$r[row_x,col_x],temp_output$n[row_x,col_x],temp_output$P[row_x,col_x]))
+    df1$GeneSymbol<-rownames(df1)
+    colnames(df1) <-c("cor","N","p_val","GeneSymbol")
+    #df1<-filter(df1,p_val < 0.05)
+    df1 <- df1 %>% filter(p_val < 0.05) %>% arrange(p_val)
+    print(paste ("Significant Probes for ",Variables_for_corr[i]," = ", length(df1$p_val),sep=""))
+    results_by_var[[Variables_for_corr[i]]] <- df1
+    gene_list[[Variables_for_corr[i]]]<-df1$GeneSymbol
+  }
+
+  Final_results_list_full[[temp_name]]<-results_by_var
+  Final_results_list_gene[[temp_name]]<-gene_list
+  print(paste(temp_name," Done",sep=""))
+}
+save(Final_results_list_full,Final_results_list_gene,Variables_for_corr,file=paste(P4_output_dir,"correlation_results.Rdata",sep=""), compress = T)
+
 
 
 

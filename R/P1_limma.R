@@ -18,7 +18,7 @@ library(Tmisc)
 library(calibrate)
 library(ggplot2)
 
-
+install.packages("limma")
 
 # Functions ---------------------------------------------------------------
 

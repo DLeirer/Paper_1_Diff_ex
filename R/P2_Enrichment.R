@@ -101,7 +101,7 @@ for(listname in lists){
 
 #load background data
 analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
-analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con","Scz vs OP")
+#analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con","Scz vs OP")
 
 #test
 a=1
