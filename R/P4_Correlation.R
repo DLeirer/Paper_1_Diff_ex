@@ -9,16 +9,35 @@ library(Biobase)
 library(tidyr)
 library(dplyr)
 library(Hmisc)
-
-
 library(reshape)
-library(WGCNA)
-library(flashClust)
+#library(flashClust)
 library(ComplexHeatmap)
 library(circlize)
 
 
+
+
 # Functions ---------------------------------------------------------------
+
+# list of Probes function
+load_probe_lists_fun<-function(analysis_names,analysis_names_save){
+  list_probes<-list()
+  for (a in 1:length(analysis_names)){
+    #analysis name
+    print(analysis_names[a])
+    
+    #load data
+    all_probes_file<-paste(analysis_names[a],"_all_probes_limma_results.tsv",sep="")
+    all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
+    
+    #subset to vector
+    print("dimension of data")
+    print(dim(all_probes))
+    list_probes[[analysis_names_save[a]]]<-as.character(filter(all_probes,Sig_LogFC_probes == "Diffexprs")$TargetID)
+    
+  }
+  return(list_probes)
+}
 
 #Function for correlation of gene expressiond data.
 corr_GX_fun<-function(input_Data,Variable,Probe_index=c(41:4770)){
@@ -34,6 +53,7 @@ corr_GX_fun<-function(input_Data,Variable,Probe_index=c(41:4770)){
   return(results<-rcorr(as.matrix(Reduced_Data)))
   
 }
+
 
 
 # Set directories ---------------------------------------------------------
@@ -54,15 +74,6 @@ P4_output_dir <-"./P4_Correlation/output/"
 #Columns 1-40 are Demographics the rest is Gene Expression. Adjusted for Sex age ethnicity, Cellmix
 load(paste(data_dir,"GX_DF_adj_data.Rdata",sep=""))
 
-mode(colnames(GX_DF_adj[1:10,41:50])) %in% c("numeric","character")
-
-
-
-
-
-
-## Load P-Data PANSS, PRS
-Pheno_data<-pData(eset_bg_log2_rsn_SVA_Good)
 
 #Cor PRS, White
 
@@ -81,45 +92,56 @@ Pheno_data<-pData(eset_bg_log2_rsn_SVA_Good)
 analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
 analysis_names_save<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
 
+# Create sample index
+sample_index<-list()
+sample_index[[analysis_names_save[1]]]<-GX_DF_adj[,c("sampleID","ICD_DSM")]
+sample_index[[analysis_names_save[2]]]<-filter(GX_DF_adj,ICD_DSM != "Other_Psychosis")[,c("sampleID","ICD_DSM")]
+sample_index[[analysis_names_save[3]]]<-filter(GX_DF_adj,ICD_DSM != "Schizophrenia")[,c("sampleID","ICD_DSM")]
+
+
+
+
 # dput(names(GX_DF_adj[,1:50])) # Variables to use in correlation.
 Variables_for_corr<-c("BMI","PanssScore", "PanssPositive", "PanssNegative", 
                       "PanssPsycho","PRS_5e08_adj", "PRS_1e05_adj", "PRS_1e04_adj", "PRS_0.001_adj", 
                       "PRS_0.01_adj", "PRS_0.05_adj", "PRS_0.1_adj", "PRS_0.2_adj", 
                       "PRS_0.5_adj", "PRS_1_adj")
 
+
+# Get list of diff ex probes from limma
+index_of_probes<-load_probe_lists_fun(analysis_names,analysis_names_save)
+
+
+# define output list
 output<-list()
-for (a in 1:length(analysis_names)){
-  setwd(top_dir)  
-  #analysis name
-  print(analysis_names[a])
-  analysis_name<-analysis_names[a]
+# loop through analysis
+for (a2 in 1:length(analysis_names)){
+
+  # get sample IDs
+  sample_ids<-sample_index[[analysis_names_save[a2]]]$sampleID  
+
+  # get probe IDs
+  probes_temp<-index_of_probes[[analysis_names_save[a2]]]
   
-  #load data
-  all_probes_file<-paste(analysis_name,"_all_probes_limma_results.tsv",sep="")
-  all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
-  all_probes<-as.character(filter(all_probes,Sig_LogFC_probes == "Diffexprs")$TargetID)
-  print(all_probes)
-  print(length(all_probes))
-  output[[analysis_names_save[a]]]<-corr_GX_fun(input_Data=GX_DF_adj,Variable=Variables_for_corr,Probe_index=all_probes)
+  
+  # analysis name and sample size output
+  print(paste("Anlysis name = ",analysis_names[a2]," | number of samples = ",length(sample_ids)," | number of probes = ",length(probes_temp),sep=""))
+  
+  # subset GX data using sample ids
+  GX_DF_temp<-GX_DF_adj[sample_ids,]
+  
+  # correlation function called
+  output[[analysis_names_save[a2]]]<-corr_GX_fun(input_Data=GX_DF_temp,Variable=Variables_for_corr,Probe_index=probes_temp)
   
   #Save
   
   #write.csv(enpv_DF_type_r,file=paste(P2_output_dir,"1_out_",analysis_name,"_diff_expression_results.csv",sep=""),row.names=F)
 }  
 
-output$FEP_vs_Control
-output$OP_vs_Con$r
-output$OP_vs_Con$n[1:50,1:50]
-
-
-
-
-# Correlation
-
-
-
-
-
+#check output
+output$FEP_vs_Control$n[c(10:20),c(200:210)]
+output$Scz_vs_Con$n[c(10:20),c(200:210)]
+output$OP_vs_Con$n[c(10:20),c(200:210)]
 
 
 
