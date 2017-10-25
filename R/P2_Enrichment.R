@@ -20,6 +20,7 @@ top_dir <-getwd()
 data_dir <-"./data/Enrichment_libaries/"
 P1_output_dir <-"./P1_Diff_Ex/output/"
 P2_output_dir <-"./P2_Enrichment/output/"
+P4_output_dir <-"./P4_Correlation/output/"
 
 
 
@@ -169,4 +170,35 @@ for (a in 1:length(analysis_names)){
   
 
 
-  
+
+# Correlation results PANSS enrichment ------------------------------------
+
+#load background data
+analysis_names_save<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
+analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
+#load data
+all_probes_file<-paste("FEP vs Control_all_probes_limma_results.tsv",sep="")
+all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
+
+load(file=paste(P4_output_dir,"correlation_results.Rdata",sep=""))
+
+
+a=1
+v=3
+#Final_results_list_full
+#Final_results_list_gene
+Final_results_list_gene[[analysis_names_save[a]]][[Variables_for_corr[v]]]
+Variables_for_corr
+
+probe_names<-Final_results_list_gene[[analysis_names_save[a]]][[Variables_for_corr[v]]]
+
+all_probes$Groups<-replace(all_probes$Groups, !all_probes$TargetID%in%probe_names, "background")
+all_probes$Groups<-replace(all_probes$Groups, all_probes$TargetID%in%probe_names, "sig_corr")
+
+
+#enrichment
+setwd(top_dir)
+setwd(P2_output_dir)
+enrichments = userListEnrichment(all_probes$TargetID,all_probes$Groups,fnIn=c("GAP_reduced_GO_Biological_Process_2015.csv","GAP_reduced_GO_Cellular_Component_2015.csv","GAP_reduced_GO_Molecular_Function_2015.csv","GAP_reduced_Kegg2016.csv","GAP_reduced_GeneSetsMental_Pirooznia_2016final2.csv","GAP_reduced_Blood_WGCNA.csv","GAP_reduced_Brain_WGCNA.csv","GAP_reduced_BrainReg_WGCNA.csv"),catNmIn=c("GO_BP","GO_CC","GO_MF","KEGG_2016","Pirooznia","Blood","Brain","BrainReg"),minGenesInCategory = 5)
+enrichments = userListEnrichment(all_probes$TargetID,all_probes$Groups,fnIn=c("GAP_reduced_Kegg2016.csv"),catNmIn=c("KEGG_2016"),minGenesInCategory = 5)
+setwd(top_dir)
