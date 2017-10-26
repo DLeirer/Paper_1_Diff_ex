@@ -232,37 +232,17 @@ for (a in 1:length(analysis_names)){
 
 # Correlation results PANSS enrichment ------------------------------------
 
-#load background data
-analysis_names_save<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
-analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
-#load data
-all_probes_file<-paste("FEP vs Control_all_probes_limma_results.tsv",sep="")
-all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
 
 load(file=paste(P4_output_dir,"correlation_results.Rdata",sep=""))
 
 
-a=1
-v=3
-#Final_results_list_full
-#Final_results_list_gene
-Final_results_list_gene[[analysis_names_save[a]]][[Variables_for_corr[v]]]
-Variables_for_corr
-
-str(Final_results_list_gene)
-Final_results_list_gene[[analysis_names_save[a]]]
-probe_names<-Final_results_list_gene[[analysis_names_save[a]]][[Variables_for_corr[v]]]
-
-all_probes$Groups<-replace(all_probes$Groups, !all_probes$TargetID%in%probe_names, "background")
-all_probes$Groups<-replace(all_probes$Groups, all_probes$TargetID%in%probe_names, "sig_corr")
-
-
 
 
 #load background data
 analysis_names_save<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
-analysis_names<-c("PanssScore","PanssPositive","PanssNegative","PanssPsycho","PRS_0.1_adj")
-
+analysis_names<-c("PanssScore","PanssPositive","PanssNegative","PRS_0.1_adj","PanssPsycho")
+#analysis_names_save<-c("OP_vs_Con")
+#analysis_names<-c("PRS_0.1_adj")
 
 #define IDS and files
 category_ids<-c("GO_BP","GO_CC","GO_MF","KEGG_2016","Pirooznia","Blood","Brain","BrainReg")
@@ -270,21 +250,28 @@ category_file_names<-c("GAP_reduced_GO_Biological_Process_2015.csv","GAP_reduced
 #select lists to tests
 cat_id=c(1:8)
 
-
+str(Final_results_list_gene)
+enrichment_results<-list()
 for (i in 1:length(analysis_names_save)){
   analysis_name_save<-analysis_names_save[i]
   temp_list<-Final_results_list_gene[[analysis_name_save]]
+  #enrichment_list
+  enrichment_var_list_temp<-list()
+  
   for (a in 1:length(analysis_names)){
+
     
     setwd(top_dir)  
     #analysis name
-    print(paste("Analysis:",analysis_name_save,"Variable:",analysis_name,sep=" "))
     analysis_name<-analysis_names[a]
+    print(paste("Analysis:",analysis_name_save,"Variable:",analysis_name,sep=" "))
+
     
     
     #Get Data from List
-    corr_probes<-temp_list[[a]]
-    
+    corr_probes<-temp_list[[analysis_name]]
+    #print to check
+    print(temp_list[analysis_name])
     #Make copy of Full probe list
     FData_reduced<-Full_probe_list
     
@@ -306,6 +293,8 @@ for (i in 1:length(analysis_names_save)){
     enpv$Genes<-enrichment_probes
     enpv<-enpv[order(enpv$InputCategories,enpv$CorrectedPvalues),]
     
+    
+    
     #data table and subset to overlap and p-val
     enpvDT<-data.table(enpv)
     enpvDT<-enpvDT[CorrectedPvalues < 0.05 & NumOverlap > 5,.SD[],by=InputCategories]
@@ -317,9 +306,14 @@ for (i in 1:length(analysis_names_save)){
     #round
     enpv_DF_type_r<-as.data.frame(round_df_fun(enpv_DF_type,4))
     
+
+    enrichment_var_list_temp[[analysis_name]]<-enpv_DF_type_r
     #Save
     write.csv(enpv_DF_type_r,file=paste(P4_output_dir,"enrichment",analysis_name_save,analysis_name,"_diff_expression_results.csv",sep=""),row.names=F)
     
   }    
 
+  enrichment_results[[analysis_name_save]]<-enrichment_var_list_temp
 }
+
+enrichment_results
