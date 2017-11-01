@@ -104,6 +104,40 @@ Chromosome_plot_fun<-function(data_limma,title,logFC_up= 0.3,logFC_down = -0.27)
 }
 
 
+#venn Diagram function
+plotVennDia <- function(a, ...) {
+  grid.newpage()
+  if (length(a) == 1) {
+    out <- draw.single.venn(likes(a), ...)
+  }
+  if (length(a) == 2) {
+    out <- draw.pairwise.venn(likes(a[1]), likes(a[2]), likes(a[1:2]), ...)
+  }
+  if (length(a) == 3) {
+    out <- draw.triple.venn(likes(a[1]), likes(a[2]), likes(a[3]), likes(a[1:2]), 
+                            likes(a[2:3]), likes(a[c(1, 3)]), likes(a), ...)
+  }
+  if (length(a) == 4) {
+    out <- draw.quad.venn(likes(a[1]), likes(a[2]), likes(a[3]), likes(a[4]), 
+                          likes(a[1:2]), likes(a[c(1, 3)]), likes(a[c(1, 4)]), likes(a[2:3]), 
+                          likes(a[c(2, 4)]), likes(a[3:4]), likes(a[1:3]), likes(a[c(1, 2, 
+                                                                                     4)]), likes(a[c(1, 3, 4)]), likes(a[2:4]), likes(a), ...)
+  }
+  if (!exists("out")) 
+    out <- "Oops"
+  return(out)
+}
+
+#Venn Diagram helper fun
+likes <- function(animals) {
+  ppl <- allpredictorsUnique
+  for (i in 1:length(animals)) {
+    ppl <- subset(ppl, ppl[animals[i]] == T)
+  }
+  nrow(ppl)
+}
+
+
 # Set directories ---------------------------------------------------------
 
 setwd("/home/daniel/Documents/Post_PhD_Papers/Paper_1_Diff_ex")
@@ -237,5 +271,38 @@ for (i in 1:length(analysis_names)){
 }
 
 
+# Venn Diagram for probes -------------------------------------------------
 
 
+#load background data
+analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
+all_probes_file<-paste(analysis_names[1],"_all_probes_limma_results.tsv",sep="")
+analysis_id=1
+pFEP<-read.csv(paste(P1_output_dir,analysis_names[analysis_id],"_all_probes_limma_results.tsv",sep=""),sep="\t",header=TRUE,stringsAsFactors=FALSE)%>%mutate(Sig_LogFC_probes_dir = ifelse(Sig_LogFC_probes=="BACKGROUND","BACKGROUND",ifelse(Sig_LogFC_probes=="Diffexprs" & LogFC_DIRECTION == "up-regulated","up","down")))
+analysis_id=2
+pScz<-read.csv(paste(P1_output_dir,analysis_names[analysis_id],"_all_probes_limma_results.tsv",sep=""),sep="\t",header=TRUE,stringsAsFactors=FALSE)%>%mutate(Sig_LogFC_probes_dir = ifelse(Sig_LogFC_probes=="BACKGROUND","BACKGROUND",ifelse(Sig_LogFC_probes=="Diffexprs" & LogFC_DIRECTION == "up-regulated","up","down")))
+analysis_id=3
+pOP<-read.csv(paste(P1_output_dir,analysis_names[analysis_id],"_all_probes_limma_results.tsv",sep=""),sep="\t",header=TRUE,stringsAsFactors=FALSE)%>%mutate(Sig_LogFC_probes_dir = ifelse(Sig_LogFC_probes=="BACKGROUND","BACKGROUND",ifelse(Sig_LogFC_probes=="Diffexprs" & LogFC_DIRECTION == "up-regulated","up","down")))
+
+pOP
+
+
+#PROBE_KEEP=ifelse( grepl("^LOC",TargetID),"DROP",ifelse( grepl("^HS\\.",TargetID), "DROP","KEEP"))) 
+pFEP$LogFC_DIRECTION 
+
+#Combine
+c_names<-c("TargetID","Sig_LogFC_probes")
+c_names<-c("TargetID","Sig_LogFC_probes_dir")
+Probediffex<-inner_join(pFEP[,c_names],pScz[,c_names], by = "TargetID")
+Probediffex<-inner_join(Probediffex,pOP[,c_names], by = "TargetID")
+colnames(Probediffex)<-c("TargetID","FEP","Scz","OP")
+
+
+Probediffex2<-ifelse(Probediffex == "up",TRUE,FALSE)
+Probediffex2<-ifelse(Probediffex == "down",TRUE,FALSE)
+
+
+
+venndata <- vennCounts(Probediffex2[,2:4])
+
+vennDiagram(venndata,circle.col= c("skyblue", "pink1","mediumorchid"))
