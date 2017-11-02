@@ -103,41 +103,6 @@ Chromosome_plot_fun<-function(data_limma,title,logFC_up= 0.3,logFC_down = -0.27)
   
 }
 
-
-#venn Diagram function
-plotVennDia <- function(a, ...) {
-  grid.newpage()
-  if (length(a) == 1) {
-    out <- draw.single.venn(likes(a), ...)
-  }
-  if (length(a) == 2) {
-    out <- draw.pairwise.venn(likes(a[1]), likes(a[2]), likes(a[1:2]), ...)
-  }
-  if (length(a) == 3) {
-    out <- draw.triple.venn(likes(a[1]), likes(a[2]), likes(a[3]), likes(a[1:2]), 
-                            likes(a[2:3]), likes(a[c(1, 3)]), likes(a), ...)
-  }
-  if (length(a) == 4) {
-    out <- draw.quad.venn(likes(a[1]), likes(a[2]), likes(a[3]), likes(a[4]), 
-                          likes(a[1:2]), likes(a[c(1, 3)]), likes(a[c(1, 4)]), likes(a[2:3]), 
-                          likes(a[c(2, 4)]), likes(a[3:4]), likes(a[1:3]), likes(a[c(1, 2, 
-                                                                                     4)]), likes(a[c(1, 3, 4)]), likes(a[2:4]), likes(a), ...)
-  }
-  if (!exists("out")) 
-    out <- "Oops"
-  return(out)
-}
-
-#Venn Diagram helper fun
-likes <- function(animals) {
-  ppl <- allpredictorsUnique
-  for (i in 1:length(animals)) {
-    ppl <- subset(ppl, ppl[animals[i]] == T)
-  }
-  nrow(ppl)
-}
-
-
 # Set directories ---------------------------------------------------------
 
 setwd("/home/daniel/Documents/Post_PhD_Papers/Paper_1_Diff_ex")
@@ -298,11 +263,20 @@ Probediffex<-inner_join(Probediffex,pOP[,c_names], by = "TargetID")
 colnames(Probediffex)<-c("TargetID","FEP","Scz","OP")
 
 
-Probediffex2<-ifelse(Probediffex == "up",TRUE,FALSE)
-Probediffex2<-ifelse(Probediffex == "down",TRUE,FALSE)
+Probediffex_up<-ifelse(Probediffex == "up",TRUE,FALSE)
+Probediffex_down<-ifelse(Probediffex == "down",TRUE,FALSE)
 
 
+venndata_up <- vennCounts(Probediffex_up[,2:4])
+venndata_down <- vennCounts(Probediffex_down[,2:4])
 
-venndata <- vennCounts(Probediffex2[,2:4])
+VennDia<-"VennDiagram_FEPSczOP"
 
-vennDiagram(venndata,circle.col= c("skyblue", "pink1","mediumorchid"))
+jpeg(paste(P1_figs_dir,VennDia,"_up",".jpeg",sep=""))
+vennDiagram(venndata_up,circle.col= c("skyblue", "pink1","mediumorchid"),cex=1,names=c("FEP","Scz", "OP"))
+dev.off()
+
+jpeg(paste(P1_figs_dir,VennDia,"_down",".jpeg",sep=""))
+vennDiagram(venndata_down,circle.col= c("skyblue", "pink1","mediumorchid"),cex=1,names=c("FEP","Scz", "OP"))
+dev.off()
+
