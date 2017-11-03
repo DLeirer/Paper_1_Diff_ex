@@ -182,49 +182,6 @@ for (a in 1:length(analysis_names)){
 
 
 
-
-
-#for (a in 1:length(analysis_names)){
-  setwd(top_dir)  
-  #analysis name
-  print(analysis_names[a])
-  analysis_name<-analysis_names[a]
-  
-  #load data
-  all_probes_file<-paste(analysis_names[a],"_all_probes_limma_results.tsv",sep="")
-  all_probes<-read.csv(paste(P1_output_dir,all_probes_file,sep=""),sep="\t",header=TRUE)
-  
-  #clean data
-  all_probes$Groups<-replace(all_probes$Groups, all_probes$Sig_LogFC_probes=="BACKGROUND", "background")
-  all_probes$Groups<-replace(all_probes$Groups, all_probes$Sig_LogFC_probes=="Diffexprs", "FDR_Pass")
-  
-  #enrichment
-  setwd(top_dir)
-  setwd(P2_output_dir)
-  enrichments = userListEnrichment(all_probes$TargetID,all_probes$Groups,fnIn=c("GAP_reduced_GO_Biological_Process_2015.csv","GAP_reduced_GO_Cellular_Component_2015.csv","GAP_reduced_GO_Molecular_Function_2015.csv","GAP_reduced_Kegg2016.csv","GAP_reduced_GeneSetsMental_Pirooznia_2016final2.csv","GAP_reduced_Blood_WGCNA.csv","GAP_reduced_Brain_WGCNA.csv","GAP_reduced_BrainReg_WGCNA.csv"),catNmIn=c("GO_BP","GO_CC","GO_MF","KEGG_2016","Pirooznia","Blood","Brain","BrainReg"),minGenesInCategory = 5)
-  setwd(top_dir)
-  
-  #Extract categories
-  enpv<-enrichments$pValue
-  enrichment_probes<-unlist(lapply(enrichments$ovGenes,paste, collapse =";"))
-  enpv$Genes<-enrichment_probes
-  enpv<-enpv[order(enpv$InputCategories,enpv$Pvalues),]
-  
-  #data table and subset to overlap and p-val
-  enpvDT<-data.table(enpv)
-  enpvDT<-enpvDT[Pvalues < 0.05 & NumOverlap > 5,.SD[],by=InputCategories]
-  enpv_DF<-as.data.frame(enpvDT,stringsAsFactors=FALSE)
-  
-  #Cange types
-  enpv_DF_type<-New_Types_danlists(enpv_DF)
-  
-  #round
-  enpv_DF_type_r<-as.data.frame(round_df_fun(enpv_DF_type,4))
-  
-  #Save
-  write.csv(enpv_DF_type_r,file=paste(P2_output_dir,"1_out_",analysis_name,"_diff_expression_results.csv",sep=""),row.names=F)
-
-}  
   
   
 
@@ -317,3 +274,68 @@ for (i in 1:length(analysis_names_save)){
 }
 
 enrichment_results
+
+
+# Make Enrichment Table Meta ----------------------------------------------
+
+
+# Load data FEP vs Con, SCZ vs con, OP vs COn, PANSS * 3
+#load background data
+analysis_names<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
+Panss_names<-c("PanssScore","PanssPositive","PanssNegative")
+
+
+# dput(names(FEP_PosPan))
+#DFcolnames<-c("InputCategories", "UserDefinedCategories", "Type", "NumOverlap","Pvalues", "CorrectedPvalues", "Genes")
+# for loop for the range of documents
+Enrich_Meta_DF<-data.frame(InputCategories = character(),
+                           UserDefinedCategories = character(),
+                           Type = character(),
+                           NumOverlap = numeric(),
+                           Pvalues = numeric(),
+                           CorrectedPvalues = numeric(),
+                           Genes = character())
+Enrich_Meta_DF[1:4]
+for (i in 1:3){
+  eTempDF<-read.csv(paste(P2_output_dir,"1_out_",analysis_names[i],"_diff_expression_results.csv",sep=""),stringsAsFactors = FALSE)
+  eTempDF$InputCategories<-paste(analysis_names[i])
+  Enrich_Meta_DF <- rbind(Enrich_Meta_DF, eTempDF)
+}
+
+
+for (i in 1:2){
+  for(v in 1:3){
+    eTempDF<-read.csv(paste(P4_output_dir,"enrichment",analysis_names[i],variable_names[v],"_diff_expression_results.csv",sep=""),stringsAsFactors = FALSE)
+    eTempDF$InputCategories<-paste(analysis_names[i],variable_names[v],sep="")
+    Enrich_Meta_DF <- rbind(Enrich_Meta_DF, eTempDF)
+  }
+}
+
+str(Enrich_Meta_DF)
+table(Enrich_Meta_DF[,1])
+
+#Make table for table
+Paper_table_colnames<-c("Module","Library","Enriched Categories")
+Table_paper <- data.frame(matrix(NA,ncol=3))
+names(Table_paper)<-Paper_table_colnames
+rowindex = 1
+Table_paper
+#group by color, > group by library >
+#First for loop selects module color. The second for loop selects 
+for (module in unique(Enrich_Meta_DF$InputCategories)){
+  modulesub<-filter(Enrich_Meta_DF,InputCategories==module)
+  print(module)
+  #loop starts for module through all categories. Categories being GO, KEGG, Piroznia, ETC.
+  for(Type_cat in unique(modulesub$Type)){
+    typesub<-filter(modulesub,Type==Type_cat)
+    Table_paper[rowindex,1:2] <- typesub[1,c(1,3)]
+    Table_paper[rowindex,3]<-paste(head(typesub$UserDefinedCategories), sep="", collapse="; ")
+    rowindex = rowindex + 1
+  }
+  
+}
+
+Table_paper[,1:2]
+tablename<-"Meta_"
+write.csv(Table_paper,file=paste(P2_output_dir,tablename,"Enrichment_results.csv",sep=""),row.names=F)
+
