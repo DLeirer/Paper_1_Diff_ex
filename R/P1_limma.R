@@ -280,3 +280,39 @@ jpeg(paste(P1_figs_dir,VennDia,"_down",".jpeg",sep=""))
 vennDiagram(venndata_down,circle.col= c("skyblue", "pink1","mediumorchid"),cex=1,names=c("FEP","Scz", "OP"))
 dev.off()
 
+
+
+
+# Table For Paper with all results ----------------------------------------
+
+
+
+#load background data
+analysis_names<-c("FEP vs Control","Scz vs Con","OP vs Con")
+all_probes_file<-paste(analysis_names[1],"_all_probes_limma_results.tsv",sep="")
+analysis_id=1
+pFEP<-read.csv(paste(P1_output_dir,analysis_names[analysis_id],"_all_probes_limma_results.tsv",sep=""),sep="\t",header=TRUE,stringsAsFactors=FALSE)
+pFEP<-transform(pFEP, FEP_vs_HC=paste(logFC," (", adj.P.Val,")", sep=""))
+analysis_id=2
+pScz<-read.csv(paste(P1_output_dir,analysis_names[analysis_id],"_all_probes_limma_results.tsv",sep=""),sep="\t",header=TRUE,stringsAsFactors=FALSE)
+pScz<-transform(pScz, Scz_vs_HC=paste(logFC," (", adj.P.Val,")", sep=""))
+analysis_id=3
+pOP<-read.csv(paste(P1_output_dir,analysis_names[analysis_id],"_all_probes_limma_results.tsv",sep=""),sep="\t",header=TRUE,stringsAsFactors=FALSE)
+pOP<-transform(pOP, OP_vs_HC=paste(logFC," (", adj.P.Val,")", sep=""))
+
+pOP[1:50,c(1:12)]
+pFEP[1:50,c(1:4,12)]
+pScz[1:50,c(1:4,12)]
+
+Table2<-merge(pFEP[1:500,c(1,12)],pScz[1:500,c(1:12)],by = "TargetID")
+Table2<-merge(Table2,pOP[1:500,c(1,12)],by = "TargetID")
+str(Table2)
+Table2<-Table2[,c(1,2,13,14,6,3:5,7)]
+##upregulated
+Table2_up<-Table2[Table2$logFC >= 0.1,]
+write.table(Table2_up, file=paste(P1_output_dir,"Combined_upregulated_significant_limma_results.tsv",sep=""),row.names=FALSE,quote=FALSE,sep = "\t")
+
+
+##downregulated
+Table2_down<-Table2[Table2$logFC <= -0.1,]
+write.table(Table2_down, file=paste(P1_output_dir,"Combined_downregulated_significant_limma_results.tsv",sep=""),row.names=FALSE,quote=FALSE,sep = "\t")
