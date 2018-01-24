@@ -127,7 +127,6 @@ category_file_names<-c("GAP_reduced_GO_Biological_Process_2015.csv","GAP_reduced
 #select lists to tests
 cat_id=c(1:8)
 
-
 for (a in 1:length(analysis_names)){
   
   setwd(top_dir)  
@@ -182,10 +181,30 @@ for (a in 1:length(analysis_names)){
 
 
 
-  
-  
+
+# Check overlap Diff Ex ---------------------------------------------------
 
 
+analysis_names_save<-c("FEP_vs_Control","Scz_vs_Con","OP_vs_Con")
+FEP_enrich<-read.csv(file=paste(P2_output_dir,"1_out_",analysis_names_save[1],"_diff_expression_results.csv",sep=""))
+table(FEP_enrich[,3])
+Scz_enrich<-read.csv(file=paste(P2_output_dir,"1_out_",analysis_names_save[2],"_diff_expression_results.csv",sep=""))
+table(Scz_enrich[,3])
+OP_enrich<-read.csv(file=paste(P2_output_dir,"1_out_",analysis_names_save[3],"_diff_expression_results.csv",sep=""))
+OP_enrich[,1:6]
+
+FEP_enrich[,2]%in%Scz_enrich[,2]
+Combined_FEP_Scz<-merge(FEP_enrich[,2:3],Scz_enrich[,1:2],by = "UserDefinedCategories")
+#Overlap FEPSCZ = 105
+Combined_FEP_Scz_OP<-merge(Combined_FEP_Scz[,1:3],OP_enrich[1:2],by = "UserDefinedCategories")
+#Overlap all = 15
+Combined_FEP_OP<-merge(FEP_enrich[,2:3],OP_enrich[,1:2],by = "UserDefinedCategories")
+as.vector(as.data.frame(Combined_FEP_OP[,1]))%in%as.vector(OP_enrich[2])
+#Overlap FEP-OP = 19 (missing = 0)
+
+Combined_Scz_OP<-merge(Scz_enrich[,2:3],OP_enrich[,1:2],by = "UserDefinedCategories")
+#Overlap Scz_OP = 15 (Missing =  modification-dependent macromolecule catabolic process(GO:0043632),modification-dependent protein catabolic process (GO:0019941),posttranscriptional regulation of gene expression (GO:0010608), regulation of I-kappaB kinase/NF-kappaB signaling (GO:0043122))
+OP_enrich$UserDefinedCategories%in%Combined_Scz_OP$UserDefinedCategories
 
 # Correlation results PANSS enrichment ------------------------------------
 
